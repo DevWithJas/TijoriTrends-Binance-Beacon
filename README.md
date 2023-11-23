@@ -1,0 +1,1 @@
+# TijoriTrends-Binance-Beacon
