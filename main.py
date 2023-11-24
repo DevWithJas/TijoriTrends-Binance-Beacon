@@ -1,287 +1,183 @@
 import streamlit as st
 import requests
 import pandas as pd
-import plotly.graph_objs as go  # Import Plotly graph objects
-import streamlit as st
-import requests
-import pandas as pd
 import plotly.graph_objs as go
-import plotly.express as px
+from plotly.subplots import make_subplots
 import logging
-import requests
+import time
 
-
-def check_api_status():
-    url = "https://api.binance.com/api/v3/ping"
+def coinbase_system_status():
+    url = "https://api.pro.coinbase.com/products"
     response = requests.get(url)
-    if response.status_code == 200:
-        return "API is up and running!"
-    else:
-        return "API is down or unreachable."
+    return "API is up and running!" if response.status_code == 200 else "API is down or unreachable."
 
-def main():
-    st.markdown("<h1 style='text-align: center; color: white;'>💹 TijoriTrends: Binance Beacon 🌟</h1>", unsafe_allow_html=True)
-    # Display the GIF
-    st.image("https://media.giphy.com/media/iRIf7MAdvOIbdxK4rR/giphy.gif")
-
-
-    # HTML and CSS for the fancy button
-    button_html = """
-    <div class="fancy-button hvr-bob">
-        <div class="left-frills frills"></div>
-        <div class="button">$</div>
-        <div class="right-frills frills"></div>
-    </div>
-    """
-
-    button_css = """
-    <style>
-        .fancy-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            background-color: #ff4081;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            transition: all 0.3s ease;
-        }
-        .fancy-button:hover {
-            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
-        }
-        .hvr-bob {
-            vertical-align: middle;
-            -webkit-transform: translateY(-8px);
-            transform: translateY(-8px);
-            -webkit-animation: hvr-bob-float 1.5s ease-in-out infinite;
-            animation: hvr-bob-float 1.5s ease-in-out infinite;
-        }
-        @-webkit-keyframes hvr-bob-float {
-            0%, 100% {
-                -webkit-transform: translateY(-8px);
-            }
-            50% {
-                -webkit-transform: translateY(-4px);
-            }
-        }
-        @keyframes hvr-bob-float {
-            0%, 100% {
-                transform: translateY(-8px);
-            }
-            50% {
-                transform: translateY(-4px);
-            }
-        }
-        .frills {
-            position: absolute;
-            background-color: #ff4081;
-            height: 100%;
-            width: 10px;
-            top: 0;
-        }
-        .left-frills {
-            left: -10px;
-            border-radius: 5px 0 0 5px;
-        }
-        .right-frills {
-            right: -10px;
-            border-radius: 0 5px 5px 0;
-        }
-    </style>
-    """
-
-    # Render HTML and CSS
-    st.markdown(button_css, unsafe_allow_html=True)
-    st.markdown(button_html, unsafe_allow_html=True)
-    
-def check_api_status():
-    url = "https://api.binance.com/api/v3/ping"
-    response = requests.get(url)
-    if response.status_code == 200:
-        return "API is up and running!"
-    else:
-        return "API is down or unreachable."
-    
-# Setup logging configuration
-logging.basicConfig(level=logging.INFO)
-    
-def safe_api_request(url, params=None, method='get'):
-    """
-    A safe API request function with error handling.
-    """
-    try:
-        if method == 'get':
-            response = requests.get(url, params=params)
-        elif method == 'post':
-            response = requests.post(url, json=params)
-        else:
-            logging.error(f"Unsupported method: {method}")
-            return None
-
-        if response.status_code == 200:
-            return response.json()
-        else:
-            logging.error(f"API request failed with status code {response.status_code}: {response.text}")
-            return None
-    except requests.exceptions.RequestException as e:
-        logging.error(f"API request resulted in an exception: {e}")
-        return None
-
-
-def fetch_candlestick_data(symbol, interval):
-    url = f"https://api.binance.com/api/v3/klines"
-    params = {'symbol': symbol, 'interval': interval}
+def fetch_coinbase_candlestick_data(symbol, interval):
+    interval_map = {"1m": 60, "5m": 300, "15m": 900, "1h": 3600, "6h": 21600, "1d": 86400}
+    granularity = interval_map.get(interval, 60)
+    url = f"https://api.pro.coinbase.com/products/{symbol}/candles"
+    params = {'granularity': granularity}
     response = requests.get(url, params=params)
     data = response.json()
-    df = pd.DataFrame(data, columns=['open_time', 'open', 'high', 'low', 'close', 'volume', 'close_time', 
-                                     'quote_asset_volume', 'number_of_trades', 'taker_buy_base_asset_volume', 
-                                     'taker_buy_quote_asset_volume', 'ignore'])
-    df['open_time'] = pd.to_datetime(df['open_time'], unit='ms')
-    df['close_time'] = pd.to_datetime(df['close_time'], unit='ms')
-    df = df.astype({'open': 'float', 'high': 'float', 'low': 'float', 'close': 'float', 'volume': 'float'})
+    df = pd.DataFrame(data, columns=['time', 'low', 'high', 'open', 'close', 'volume'])
+    df['time'] = pd.to_datetime(df['time'], unit='s')
     return df
 
+def fetch_kraken_24hr_ticker_stats(symbol):
+    symbol_mapping = {
+        "BTC-USD": "XXBTZUSD",
+        "ETH-USD": "XETHZUSD",
+    }
+    kraken_symbol = symbol_mapping.get(symbol, symbol)
+    url = "https://api.kraken.com/0/public/Ticker"
+    params = {'pair': kraken_symbol}
+    response = requests.get(url, params=params)
+    data = response.json()
+    if data['result'].get(kraken_symbol):
+        return data['result'][kraken_symbol]
+    else:
+        return f"Data for {symbol} ({kraken_symbol}) not found in Kraken API."
+
+def process_ticker_data_for_radar(ticker_data):
+    radar_data = {}
+    
+    categories = ['Asks', 'Bids', 'Close', 'Volume', 'Low', 'High', 'Open']
+
+    for key, category in zip(['a', 'b', 'c', 'v', 'l', 'h', 'o'], categories):
+        if key in ticker_data:
+            radar_data[category] = ticker_data[key][0]
+
+    return radar_data
+
+def plot_radar_chart(data, symbol):
+    categories = list(data.keys())
+    values = list(data.values())
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatterpolar(
+        r=values,
+        theta=categories,
+        fill='toself',
+        name=symbol
+    ))
+
+    fig.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, max(values)]
+            )),
+        showlegend=False
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+def fetch_coinbase_order_book(symbol, level=2):
+    url = f"https://api.pro.coinbase.com/products/{symbol}/book"
+    params = {'level': level}
+    response = requests.get(url, params=params)
+    data = response.json()
+    return data
+
+def measure_latency():
+    url = "https://api.pro.coinbase.com/products"
+    start_time = time.time()
+    response = requests.get(url)
+    end_time = time.time()
+    latency = (end_time - start_time) * 1000
+    return latency if response.status_code == 200 else None
+
 def plot_candlestick_chart(data, symbol):
-    fig = go.Figure(data=[go.Candlestick(x=data['open_time'],
+    fig = go.Figure(data=[go.Candlestick(x=data['time'],
                                          open=data['open'], high=data['high'],
                                          low=data['low'], close=data['close'])])
     fig.update_layout(title=f'Candlestick Chart for {symbol}',
                       xaxis_rangeslider_visible=False)
     st.plotly_chart(fig, use_container_width=True)
 
-def fetch_24hr_ticker_stats(symbol):
-    url = f"https://api.binance.com/api/v3/ticker/24hr"
-    params = {'symbol': symbol}
-    response = requests.get(url, params=params)
-    return response.json()
+def plot_order_book_depth_chart(data, symbol):
+    asks = pd.DataFrame(data['asks'], columns=['price', 'size', 'num_orders'])
+    bids = pd.DataFrame(data['bids'], columns=['price', 'size', 'num_orders'])
+    asks[['price', 'size']] = asks[['price', 'size']].apply(pd.to_numeric)
+    bids[['price', 'size']] = bids[['price', 'size']].apply(pd.to_numeric)
+    asks = asks.sort_values('price', ascending=True)
+    bids = bids.sort_values('price', ascending=True)
+    asks['cumulative'] = asks['size'].cumsum()
+    bids['cumulative'] = bids['size'].cumsum()
 
-import time
+    fig = make_subplots(rows=1, cols=2, shared_yaxes=True, horizontal_spacing=0.02)
 
-def measure_latency(symbol):
-    url = f"https://api.binance.com/api/v3/ping"
-    start_time = time.time()
-    response = requests.get(url)
-    end_time = time.time()
-    latency = (end_time - start_time) * 1000  # Convert to milliseconds
-    return latency if response.status_code == 200 else None
+    fig.add_trace(
+        go.Bar(x=asks['price'], y=asks['size'], name='Asks', marker_color='red'),
+        row=1, col=1
+    )
 
+    fig.add_trace(
+        go.Bar(x=bids['price'], y=bids['size'], name='Bids', marker_color='green'),
+        row=1, col=2
+    )
+
+    fig.update_layout(
+        title=f'Order Book Depth Chart for {symbol}',
+        xaxis_title='Price (Asks)',
+        xaxis2_title='Price (Bids)',
+        yaxis_title='Size',
+        plot_bgcolor='white',
+        showlegend=False
+    )
+
+    fig.update_xaxes(type='category', row=1, col=1)
+    fig.update_xaxes(type='category', row=1, col=2)
+    fig.update_yaxes(type='linear', row=1, col=1)
+    fig.update_xaxes(autorange="reversed", row=1, col=1)
+
+    st.plotly_chart(fig, use_container_width=True)
 
 def main():
     st.markdown("<h1 style='text-align: center; color: white;'>💹 TijoriTrends: Binance Beacon 🌟</h1>", unsafe_allow_html=True)
     st.image("https://media.tenor.com/T-zDRVK4XdQAAAAd/tradinggif.gif")
     
-    # Navigation bar in sidebar
     st.sidebar.title("Navigation")
-    selected_symbol = st.sidebar.selectbox("💼 Choose a symbol for the candlestick chart", 
-                                           ["BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "LTCUSDT", "ADAUSDT"], key='candlestick_symbol')
+    selected_nav = st.sidebar.radio("Choose a section", ["Home", "Candlestick Chart", "24hr Stats", "Order Book Depth Chart", "API Latency"])
 
-    interval = st.sidebar.selectbox("🕒 Select the time interval for the candlestick chart", 
-                                    ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"], key='interval')
-
-    if st.sidebar.button("📊 Fetch Candlestick Data"):
-        data = fetch_candlestick_data(selected_symbol, interval)
-        plot_candlestick_chart(data, selected_symbol)
-
-    # Separate section for 24hr Ticker Price Change Statistics
-    st.markdown("## 📈 24hr Ticker Price Change Stats")
-    selected_symbol_stats = st.selectbox("📈 Choose a symbol for 24hr stats", 
-                                         ["BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "LTCUSDT", "ADAUSDT"], key='24hr_stats_symbol')
-
-    if st.button("Fetch 24hr Stats", key='fetch_24hr_stats'):
-        ticker_data = fetch_24hr_ticker_stats(selected_symbol_stats)
-        # Debug: Print the data to check if it's correct
-        st.write(ticker_data)  # Remove after confirming data structure
-        plot_24hr_ticker_stats(ticker_data, selected_symbol_stats)
-
-    # Sidebar section for Order Book Depth Chart
-    st.sidebar.markdown("## 📊 Order Book Depth Chart")
-    selected_symbol_order_book = st.sidebar.selectbox(
-        "📖 Choose a symbol for the Order Book", 
-        ["BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "LTCUSDT", "ADAUSDT"],
-        key='order_book_symbol'
+    selected_symbol_candlestick = st.selectbox(
+        "Choose a cryptocurrency pair",
+        ["BTC-USD", "ETH-USD"],
+        key="selected_symbol_candlestick"
     )
 
-    if st.sidebar.button("Fetch Order Book", key='fetch_order_book'):
-        order_book_data = fetch_order_book(selected_symbol_order_book)
-        plot_order_book(order_book_data, selected_symbol_order_book)
+    if selected_nav == "Home":
+        st.write(coinbase_system_status())
+    elif selected_nav == "Candlestick Chart":
+        st.header("Candlestick Chart 🕯️")
+        selected_interval = st.selectbox(
+            "Choose the time interval",
+            ["1m", "5m", "15m", "1h", "6h", "1d"],
+            key="selected_interval"
+        )
+        if st.button("Show Candlestick Chart", key="button_candlestick"):
+            data = fetch_coinbase_candlestick_data(selected_symbol_candlestick, selected_interval)
+            plot_candlestick_chart(data, selected_symbol_candlestick)
+    elif selected_nav == "24hr Stats":
+        st.header("24hr Ticker Price Change Statistics 📊")
+        ticker_data = fetch_kraken_24hr_ticker_stats(selected_symbol_candlestick)
+        radar_data = process_ticker_data_for_radar(ticker_data)
+        st.write(ticker_data)
+        plot_radar_chart(radar_data, selected_symbol_candlestick)
+    elif selected_nav == "Order Book Depth Chart":
+        st.header("Order Book Depth Chart 📚")
+        if st.button("Fetch and Plot Order Book Depth Chart", key="button_plot_order_book"):
+            order_book_data = fetch_coinbase_order_book(selected_symbol_candlestick, level=1)
+            plot_order_book_depth_chart(order_book_data, selected_symbol_candlestick)
+    elif selected_nav == "API Latency":
+        st.header("API Latency Measurement ⏳")
+        if st.button("Measure Latency", key="button_latency"):
+            latency = measure_latency()
+            if latency is not None:
+                st.write(f"The API latency is {latency:.2f} ms.")
+            else:
+                st.write("Failed to measure latency.")
 
-    # Latency Measurement as a center section
-    st.markdown("## ⏳ Latency Measurement")
-    selected_symbol = st.selectbox("Choose a symbol to measure latency", 
-                                   ["BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "LTCUSDT", "ADAUSDT"],
-                                   key='latency_symbol')
-    if st.button("⚡ Measure Latency", key='measure_latency'):
-        latency = measure_latency(selected_symbol)
-        if latency is not None:
-            st.write(f"The round-trip latency for {selected_symbol} is {latency:.2f} ms.")
-        else:
-            st.write("Failed to measure latency.")
-
-
-def fetch_order_book(symbol, limit=500):
-    url = f"https://api.binance.com/api/v3/depth"
-    params = {'symbol': symbol, 'limit': limit}
-    response = requests.get(url, params=params)
-    data = response.json()
-    return data
-
-def plot_order_book(data, symbol):
-    # Process asks and bids
-    asks = pd.DataFrame(data['asks'], columns=['price', 'quantity'], dtype=float)
-    bids = pd.DataFrame(data['bids'], columns=['price', 'quantity'], dtype=float)
-    
-    # Cumulative sums for plotting
-    asks['cum_quantity'] = asks['quantity'].cumsum()
-    bids['cum_quantity'] = bids['quantity'].cumsum()
-
-    # Create figure
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=asks['price'], y=asks['cum_quantity'], fill='tozeroy', name='Asks'))  # fill down to xaxis
-    fig.add_trace(go.Scatter(x=bids['price'], y=bids['cum_quantity'], fill='tozeroy', name='Bids'))  # fill to trace0 y
-
-    # Update titles and layout
-    fig.update_layout(title=f'Order Book Depth Chart for {symbol}', xaxis_title='Price', yaxis_title='Cumulative Quantity')
-
-    st.plotly_chart(fig, use_container_width=True)
-
-
-import plotly.express as px
-
-
-def plot_24hr_ticker_stats(data, symbol):
-    # Create a DataFrame for the radar chart
-    categories = ['Price Change', 'Price Change Percent', 'Weighted Avg Price', 'Last Price', 'High Price', 'Low Price']
-    values = [float(data['priceChange']), float(data['priceChangePercent']),
-              float(data['weightedAvgPrice']), float(data['lastPrice']),
-              float(data['highPrice']), float(data['lowPrice'])]
-    # Normalize the values to be between 0 and 1 for better representation in radar chart
-    max_value = max(values)
-    min_value = min(values)
-    normalized_values = [(value - min_value) / (max_value - min_value) for value in values]
-    df = pd.DataFrame(dict(r=normalized_values, theta=categories))
-
-    fig = px.line_polar(df, r='r', theta='theta', line_close=True)
-    
-    fig.update_traces(fill='toself')
-    fig.update_layout(
-        title=f'24hr Ticker Price Change Statistics Radar Chart for {symbol}',
-        polar=dict(
-            radialaxis=dict(
-              visible=True,
-              range=[0, 1]
-            )),
-        showlegend=False
-    )
-    
-    # Display the figure
-    st.plotly_chart(fig, use_container_width=True)
-
-
-
- 
 if __name__ == "__main__":
     main()
 
