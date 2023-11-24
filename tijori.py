@@ -7,6 +7,9 @@ import requests
 import pandas as pd
 import plotly.graph_objs as go
 import plotly.express as px
+import logging
+import requests
+
 
 def check_api_status():
     url = "https://api.binance.com/api/v3/ping"
@@ -101,6 +104,29 @@ def check_api_status():
         return "API is up and running!"
     else:
         return "API is down or unreachable."
+    
+def safe_api_request(url, params=None, method='get'):
+    """
+    A safe API request function with error handling.
+    """
+    try:
+        if method == 'get':
+            response = requests.get(url, params=params)
+        elif method == 'post':
+            response = requests.post(url, json=params)
+        else:
+            logging.error(f"Unsupported method: {method}")
+            return None
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            logging.error(f"API request failed with status code {response.status_code}: {response.text}")
+            return None
+    except requests.exceptions.RequestException as e:
+        logging.error(f"API request resulted in an exception: {e}")
+        return None
+
 
 def fetch_candlestick_data(symbol, interval):
     url = f"https://api.binance.com/api/v3/klines"
@@ -255,4 +281,5 @@ def plot_24hr_ticker_stats(data, symbol):
  
 if __name__ == "__main__":
     main()
+
 
