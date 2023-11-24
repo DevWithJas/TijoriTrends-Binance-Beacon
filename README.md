@@ -77,3 +77,9 @@ TijoriTrends: Binance Beacon is a valuable tool for cryptocurrency traders and e
 
 Give it a try and start exploring the world of cryptocurrency with TijoriTrends!
 
+![Screenshot (12)](https://github.com/CreateJas/TijoriTrends-Binance-Beacon/assets/91935368/591c2e1d-3320-4310-a145-897a14596346)
+![Screenshot (13)](https://github.com/CreateJas/TijoriTrends-Binance-Beacon/assets/91935368/3ea19431-0e78-42d1-be2f-c106afd86618)
+![Screenshot (14)](https://github.com/CreateJas/TijoriTrends-Binance-Beacon/assets/91935368/6a0c7900-76dc-42f7-9b94-44d40f13f949)
+
+
+
