@@ -105,6 +105,9 @@ def check_api_status():
     else:
         return "API is down or unreachable."
     
+# Setup logging configuration
+logging.basicConfig(level=logging.INFO)
+    
 def safe_api_request(url, params=None, method='get'):
     """
     A safe API request function with error handling.
@@ -281,5 +284,4 @@ def plot_24hr_ticker_stats(data, symbol):
  
 if __name__ == "__main__":
     main()
-
 
