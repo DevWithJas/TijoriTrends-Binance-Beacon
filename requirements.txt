@@ -1,4 +1,3 @@
-User
 streamlit==1.17.0
 plotly==5.18.0
 pandas==1.3.3
@@ -7,5 +6,4 @@ requests==2.26.0
 beautifulsoup4==4.12.2
 openai==0.28.0
 seaborn==0.12.2
-ipython==8.16.1 include that here too
-altair==4.1.0 
+ipython>=7.0.0,<8.0.0
